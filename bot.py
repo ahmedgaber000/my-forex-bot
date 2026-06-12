@@ -6,11 +6,11 @@ from flask import Flask
 from threading import Thread
 import os
 
-# --- إعداد الخادم الصغير ---
+# --- إعداد الخادم الصغير (ضروري لـ Render) ---
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return "البوت يعمل!"
+    return "البوت يعمل بكفاءة!"
 
 def run():
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
@@ -32,11 +32,26 @@ stats = {"win": 0, "loss": 0}
 pending_trades = []
 current_stake = 10 
 MAX_STAKE = 160
+last_update_id = 0
 
 def send_telegram_msg(message):
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={CHAT_ID}&text={message}"
         requests.get(url, timeout=5)
+    except: pass
+
+def check_for_commands():
+    global last_update_id
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/getUpdates?offset={last_update_id + 1}"
+        response = requests.get(url, timeout=5).json()
+        if response.get('result'):
+            for update in response['result']:
+                last_update_id = update['update_id']
+                if 'message' in update and 'text' in update['message']:
+                    if update['message']['text'] == '/stats':
+                        msg = f"📊 إحصائيات النظام:\n✅ رابحة: {stats['win']}\n❌ خاسرة: {stats['loss']}\n💰 الرهان الحالي: {current_stake}$"
+                        send_telegram_msg(msg)
     except: pass
 
 def get_market_data(pair):
@@ -49,19 +64,11 @@ def get_market_data(pair):
     except: return None
 
 # --- بداية التشغيل ---
-send_telegram_msg("🚀 البوت يعمل الآن على Render.")
+send_telegram_msg("🚀 نظام السيادة (النسخة المطلقة) يعمل الآن على Render.")
 
 while True:
-    # --- مراقبة أوامر تليجرام ---
-    try:
-        updates = requests.get(f"https://api.telegram.org/bot{TOKEN}/getUpdates", timeout=2).json()
-        if updates.get('result'):
-            last_msg = updates['result'][-1]['message']
-            if last_msg.get('text') == '/stats':
-                send_telegram_msg(f"📊 الإحصائيات:\n✅ رابحة: {stats['win']}\n❌ خاسرة: {stats['loss']}")
-    except: pass
-
-    # --- المحرك الرئيسي ---
+    check_for_commands() # فحص الأوامر في كل دورة
+    
     current_time = time.time()
     sentiment = random.uniform(-1, 1) 
     
