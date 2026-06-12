@@ -6,7 +6,7 @@ from flask import Flask
 from threading import Thread
 import os
 
-# --- إعداد الخادم الصغير (ليقبل Render البوت) ---
+# --- إعداد الخادم الصغير ---
 app = Flask(__name__)
 @app.route('/')
 def home():
@@ -15,14 +15,12 @@ def home():
 def run():
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
-# تشغيل الخادم
-Thread(target=run).start()
+Thread(target=run, daemon=True).start()
 
-# --- الإعدادات (نفس التوكن والايدي الخاص بك) ---
+# --- الإعدادات ---
 TOKEN = "8903861424:AAFjzErpzW7YFu1KQZOVMB2D3tH-UtyUHEw"
 CHAT_ID = "5787999565"
 
-# القائمة الكاملة
 PAIRS = {
     "FX:EURUSD": 500, "FX:GBPUSD": 500, "FX:USDJPY": 600, 
     "FX:USDCHF": 400, "FX:AUDUSD": 400, "FX:USDCAD": 400, 
@@ -50,10 +48,20 @@ def get_market_data(pair):
         return {"price": d[0], "sma20": d[1], "sma9": d[2], "ema200": d[3], "volume": d[4]}
     except: return None
 
-# بداية التشغيل
+# --- بداية التشغيل ---
 send_telegram_msg("🚀 البوت يعمل الآن على Render.")
 
 while True:
+    # --- مراقبة أوامر تليجرام ---
+    try:
+        updates = requests.get(f"https://api.telegram.org/bot{TOKEN}/getUpdates", timeout=2).json()
+        if updates.get('result'):
+            last_msg = updates['result'][-1]['message']
+            if last_msg.get('text') == '/stats':
+                send_telegram_msg(f"📊 الإحصائيات:\n✅ رابحة: {stats['win']}\n❌ خاسرة: {stats['loss']}")
+    except: pass
+
+    # --- المحرك الرئيسي ---
     current_time = time.time()
     sentiment = random.uniform(-1, 1) 
     
@@ -67,7 +75,6 @@ while True:
             if data['volume'] >= min_vol and trend_ok and diff < (data['price'] * 0.0004):
                 action = "شراء" if data['sma9'] > data['sma20'] else "بيع"
                 if not any(t['symbol'] == symbol for t in pending_trades):
-                    exec_time = (datetime.now().replace(second=0) + timedelta(minutes=1)).strftime('%H:%M')
                     send_telegram_msg(f"🔔 إشارة: {symbol}\nالاتجاه: {action}")
                     pending_trades.append({'pair': pair, 'symbol': symbol, 'action': action, 'entry_price': data['price'], 'expiry': current_time + 300})
 
