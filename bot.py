@@ -16,7 +16,7 @@ def run_web():
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 # --- الإعدادات ---
-TOKEN = "8903861424:AAFjzErpzW7YFu1KQZOVMB2D3tH-UtyUHEw"
+TOKEN = "-UtyUHEw"
 CHAT_ID = "5787999565"
 
 # القائمة الكاملة كما اتفقنا (12 زوجاً)
